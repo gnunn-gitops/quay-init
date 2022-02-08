@@ -11,42 +11,38 @@
     quay_organizations:
       - { name: productcatalog, email: gnunn@local.com, time_machine_expiration: 14d }
   tasks:
-    - name:
-      debug:
-        msg: "Password is {{ quay_init_password }}"
+    - name: Wait for Quay API
+      ansible.builtin.uri:
+        method: GET
+        url: "{{ quay_route }}/health/instance"
+        validate_certs: no
+      register: quay_status
+      until:
+        - quay_status.status == 200
+        - quay_status.json.data.services is defined
+        - quay_status.json.data.services | dict2items | rejectattr('value', 'equalto', True) | list | count == 0
+      delay: 10
+      retries: 60
 
-    # - name: Wait for Quay API
-    #   ansible.builtin.uri:
-    #     method: GET
-    #     url: "{{ quay_route }}/health/instance"
-    #     validate_certs: no
-    #   register: quay_status
-    #   until:
-    #     - quay_status.status == 200
-    #     - quay_status.json.data.services is defined
-    #     - quay_status.json.data.services | dict2items | rejectattr('value', 'equalto', True) | list | count == 0
-    #   delay: 10
-    #   retries: 60
+    - name: Ensure the initial user exists
+      herve4m.quay.quay_first_user:
+        username: "{{ quay_init_username }}"
+        email: "{{ quay_init_username }}@local.com"
+        password: "{{ quay_init_password }}"
+        create_token: true
+        quay_host: "{{ quay_route }}"
+      register: result
 
-    # - name: Ensure the initial user exists
-    #   herve4m.quay.quay_first_user:
-    #     username: "{{ quay_init_username }}"
-    #     email: "{{ quay_init_username }}@local.com"
-    #     password: "{{ quay_init_password }}"
-    #     create_token: true
-    #     quay_host: "{{ quay_route }}"
-    #   register: result
+    - name: get access token
+      set_fact:
+        access_token: "{{ result['access_token'] }}"
 
-    # - name: get access token
-    #   set_fact:
-    #     access_token: "{{ result['access_token'] }}"
-
-    # - name: create organizations
-    #   herve4m.quay.quay_organization:
-    #     name: "{{item.name}}"
-    #     email: "{{item.email}}"
-    #     time_machine_expiration: "{{item.time_machine_expiration}}"
-    #     state: present
-    #     quay_host: "{{ quay_route }}"
-    #     quay_token: "{{ access_token }}"
-    #   with_items: "{{ quay_organizations }}"
+    - name: create organizations
+      herve4m.quay.quay_organization:
+        name: "{{item.name}}"
+        email: "{{item.email}}"
+        time_machine_expiration: "{{item.time_machine_expiration}}"
+        state: present
+        quay_host: "{{ quay_route }}"
+        quay_token: "{{ access_token }}"
+      with_items: "{{ quay_organizations }}"
