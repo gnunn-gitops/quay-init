@@ -1,0 +1,68 @@
+---
+- name: Create org and repos
+  gather_facts: no
+  hosts: localhost
+  vars:
+    quay_teams:
+      - name: maintainers
+        organization: productcatalog
+        description: Maintainers of product catalog images
+        members:
+          - user1
+        role: member
+
+    quay_organizations:
+      - name: productcatalog
+        email: gnunn@local.com
+        time_machine_expiration: 14d
+
+    quay_repositories:
+      - name: server
+        organization: productcatalog
+        description: Product Catalog back-end
+        permissions:
+          - name: maintainers
+            type: team
+            role: admin
+      - name: client
+        org: productcatalog
+        description: Product Catalog front-end
+        permissions:
+          - name: productcatalog
+            type: team
+            role: admin
+  tasks:
+    - name: create organizations
+      herve4m.quay.quay_organization:
+        name: "{{ item.name }}"
+        email: "{{ item.email }}"
+        time_machine_expiration: "{{ item.time_machine_expiration }}"
+        state: present
+        quay_host: "{{ quay_route }}"
+        quay_token: "{{ access_token }}"
+      with_items: "{{ quay_organizations }}"
+
+    - name: Create teams
+      herve4m.quay.quay_team:
+        name: "{{ item.name }}"
+        organization: "{{ item.organization }}"
+        description: "{{ item.description }}"
+        role: "{{ item.role }}"
+        members: "{{ item.members }}"
+        append: false
+        state: present
+        quay_host: "{{ quay_route }}"
+        quay_token: "{{ access_token }}"
+      with_items: "{{ quay_teams }}"
+
+    - name: create repositories
+      herve4m.quay.quay_repository:
+        name: "{{ item.organization }}/{{ item.name }}"
+        visibility: private
+        description: "{{ item.description }}"
+
+        perms: "{{ item.permissions }}"
+        state: present
+        quay_host: "{{ quay_route }}"
+        quay_token: "{{ access_token }}"
+      with_items: "{{ quay_repositories }}"

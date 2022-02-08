@@ -8,8 +8,6 @@
     quay_registry_name: quay
     quay_init_username: quayadmin
     quay_init_password: XXXXXX
-    quay_organizations:
-      - { name: productcatalog, email: gnunn@local.com, time_machine_expiration: 14d }
   tasks:
     - name: Wait for Quay API
       ansible.builtin.uri:
@@ -49,13 +47,3 @@
           data:
             token: "{{ access_token | b64encode }}"
           type: Opaque
-
-    # - name: create organizations
-    #   herve4m.quay.quay_organization:
-    #     name: "{{item.name}}"
-    #     email: "{{item.email}}"
-    #     time_machine_expiration: "{{item.time_machine_expiration}}"
-    #     state: present
-    #     quay_host: "{{ quay_route }}"
-    #     quay_token: "{{ access_token }}"
-    #   with_items: "{{ quay_organizations }}"
